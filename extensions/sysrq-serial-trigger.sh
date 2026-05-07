@@ -45,7 +45,16 @@
 function custom_kernel_config__sysrq_serial_trigger() {
 	# Default "sysrq": printable, easy to type, and passes through Bash/sed without
 	# escaping. Kernel matches bytes verbatim against serial input after BREAK.
+	# `:-` substitutes only when SYSRQ_SERIAL_SEQUENCE is unset; an explicit
+	# empty value would otherwise silently write MAGIC_SYSRQ_SERIAL_SEQUENCE=""
+	# which lib/Kconfig.debug documents as disabling BREAK-triggered SysRq
+	# entirely. Refuse empty loudly so the operator fixes the config rather
+	# than getting a silently-disabled SysRq path.
 	declare seq="${SYSRQ_SERIAL_SEQUENCE:-sysrq}"
+	if [[ -z "${seq}" ]]; then
+		exit_with_error "${EXTENSION}: SYSRQ_SERIAL_SEQUENCE must not be empty" \
+			"empty would write MAGIC_SYSRQ_SERIAL_SEQUENCE=\"\" and disable BREAK-triggered SysRq; pick any non-empty sequence (default: SYSRQ_SERIAL_SEQUENCE=sysrq)"
+	fi
 	display_alert "${EXTENSION}: enabling SysRq over serial" "sequence='${seq}' after BREAK" "info"
 	opts_y+=("MAGIC_SYSRQ" "MAGIC_SYSRQ_SERIAL")
 	# 1 = SYSRQ_ENABLE_ALL (kernel special-case, not bit 1); enables all SysRq
