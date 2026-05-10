@@ -24,7 +24,7 @@ function store_led() {
 	TRIGGER_PATH="$1/trigger"
 	DESTINATION="$2"
 
-	TRIGGER_CONTENT=$(<$TRIGGER_PATH)
+	TRIGGER_CONTENT=$(< $TRIGGER_PATH)
 
 	[[ "$TRIGGER_CONTENT" =~ $REGEX ]]
 
@@ -40,15 +40,34 @@ function store_led() {
 	COMMAND_PARAMS="$CMD_FIND $PATH/ -maxdepth 1 -type f ! -iname uevent ! -iname trigger -perm /u+w -printf %f\\n"
 	PARAMS=$($COMMAND_PARAMS)
 
-	# In case trigger is representing link-state for any network, use
-	# bash substitution to remove the brightness parameter and avoid
-	# ghost wan/lan/etc (led up while cable unplugged)
-	[[ "$TRIGGER_VALUE" == *":link" ]] && PARAMS=${PARAMS//"brightness"/}
+	# brightness has two distinct meanings depending on the trigger:
+	#   trigger=none  → brightness is config (static value, persist it).
+	#   trigger=*     → brightness is the trigger's instantaneous output
+	#                   (blink-state at shutdown), persisting it is noise
+	#                   and causes ghost-LED bugs on restore (e.g. ":link"
+	#                   triggers showed cable-up while unplugged; rtw88
+	#                   wifi flapped 0/1 in /etc/armbian-leds.conf on every
+	#                   shutdown). Strip for any non-none trigger.
+	# Subsumes the earlier ":link"-only workaround (commit 2960ffaff).
+	# Forum thread: https://forum.armbian.com/topic/57284-regular-changes-in-file-etcarmbian-ledsconf-on-odroid-n2/
+	# Token-safe filter (whole-word match): the previous ${PARAMS//brightness/}
+	# substring substitution would also corrupt sibling files like
+	# `max_brightness` -> `max_`, breaking the read loop below under set -e.
+	# Bash-only (no `awk` etc.) because store_led() reassigns PATH to the
+	# sysfs led path, so external commands wouldn't be found here.
+	if [[ "$TRIGGER_VALUE" != "none" ]]; then
+		declare _filtered=""
+		for _p in $PARAMS; do
+			[[ "$_p" == "brightness" ]] && continue
+			_filtered+="$_p"$'\n'
+		done
+		PARAMS="$_filtered"
+	fi
 
 	for PARAM in $PARAMS; do
 
 		PARAM_PATH="$PATH/$PARAM"
-		VALUE=$(<$PARAM_PATH)
+		VALUE=$(< $PARAM_PATH)
 
 		# If the variable contains non-printable characters
 		# suppose it contains binary and skip it
