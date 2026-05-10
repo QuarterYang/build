@@ -177,9 +177,27 @@ function _native_armhf_observe_qemu_arm_state() {
 }
 
 function _native_armhf_setup_binfmt_elf() {
+	declare killswitch=no
 	case "${NATIVE_ARMHF_ON_ARM64:-auto}" in
-		no | never | disabled) return 1 ;;
+		no | never | disabled) killswitch=yes ;;
 	esac
+
+	# Killswitch path: still take SH-lock on qemu-arm so concurrent
+	# native-armhf builders detect us via EX-NB probe and refuse to switch
+	# qemu-arm off. Without this anchor an N-builder arriving mid-K-chroot
+	# would echo 0 and silently break K's qemu-arm-static routing.
+	if [[ "${killswitch}" == "yes" ]]; then
+		if [[ -e /proc/sys/fs/binfmt_misc/qemu-arm ]] &&
+			{ exec {_native_armhf_emul_lock_fd}< /proc/sys/fs/binfmt_misc/qemu-arm; } 2> /dev/null &&
+			flock -s -n "${_native_armhf_emul_lock_fd}"; then
+			add_cleanup_handler trap_handler_native_armhf_release_emul_lock
+			display_alert "Native armhf via binfmt_elf" "killswitch active; emulation-mode SH-lock acquired (blocks concurrent native-armhf switchover)" "info"
+		else
+			[[ -n "${_native_armhf_emul_lock_fd:-}" ]] && exec {_native_armhf_emul_lock_fd}>&-
+			unset _native_armhf_emul_lock_fd
+		fi
+		return 1
+	fi
 
 	# Idempotent: callers in rootfs-create.sh and rootfs-image.sh invoke this
 	# from both the cache-miss and cache-hit paths.
@@ -209,6 +227,23 @@ function _native_armhf_setup_binfmt_elf() {
 		display_alert "Native armhf via binfmt_elf" "cannot open binfmt_misc/qemu-arm; falling back to qemu emulation" "wrn"
 		return 1
 	fi
+
+	# EX-NB probe BEFORE acquiring our own SH (otherwise our own SH would
+	# block the probe — flock counts per-OFD, our two fds on the same file
+	# would interfere). EX-NB success means zero other SH-holders. Failure
+	# with state="1" identifies a killswitch K-builder holding the
+	# emulation-mode anchor — switching qemu-arm off would corrupt their
+	# chroot exec routing. Failure with state="0" is a peer N-builder in
+	# joiner-territory.
+	if flock -x -n "${_native_armhf_lock_fd}"; then
+		flock -u "${_native_armhf_lock_fd}"
+	elif [[ "$(_native_armhf_observe_qemu_arm_state)" == "1" ]]; then
+		exec {_native_armhf_lock_fd}>&-
+		unset _native_armhf_lock_fd
+		display_alert "Native armhf via binfmt_elf" "concurrent build holds emulation-mode lock (NATIVE_ARMHF_ON_ARM64=no)" "err"
+		exit_with_error "cannot enable native armhf: concurrent build with NATIVE_ARMHF_ON_ARM64=no holds emulation lock. Wait for it to finish or run on a separate host."
+	fi
+
 	if ! flock -s -w 30 "${_native_armhf_lock_fd}"; then
 		display_alert "Native armhf via binfmt_elf" "could not acquire shared flock on binfmt_misc/qemu-arm within 30s; falling back to qemu emulation" "wrn"
 		exec {_native_armhf_lock_fd}>&-
@@ -241,6 +276,14 @@ function _native_armhf_setup_binfmt_elf() {
 	display_alert "Native armhf via binfmt_elf" "kernel $(uname -r), aarch64 host with COMPAT_VDSO; qemu-arm disabled, kernel binfmt_elf takes over" "info"
 	declare -g ARMBIAN_NATIVE_ARMHF_VIA_BINFMT_ELF=yes
 	return 0
+}
+
+# Killswitch path cleanup: just release the SH-lock fd. No state mutation,
+# no last-out detection — the killswitch builder never wrote to qemu-arm.
+function trap_handler_native_armhf_release_emul_lock() {
+	[[ -n "${_native_armhf_emul_lock_fd:-}" ]] || return 0
+	exec {_native_armhf_emul_lock_fd}>&-
+	unset _native_armhf_emul_lock_fd
 }
 
 # Cleanup ordering invariant: this handler must run AFTER cleanups that kill
