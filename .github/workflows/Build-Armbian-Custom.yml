@@ -92,7 +92,6 @@ jobs:
       - name: "Checkout Build System"
         uses: actions/checkout@v4
         with:
-          repository: armbian/build
           clean: false
           ref: main
           path: build
@@ -160,7 +159,6 @@ jobs:
       - name: "Checkout Build System"
         uses: actions/checkout@v4
         with:
-          repository: armbian/build
           clean: false
           ref: main
           path: build
