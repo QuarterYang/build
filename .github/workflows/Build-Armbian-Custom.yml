@@ -70,7 +70,7 @@ jobs:
 
           # Convert space-separated strings from env into JSON arrays for matrix strategies.
           JSON_RELEASE=$(echo "${RELEASE_STRING}" | jq -c -R 'split(" ") | map(select(. != ""))')
-          JSON_BOARD=$(echo "${BOARD_STRING}" | jq -c -R 'split(" ") | map(select(. != ""))')
+          JSON_BOARD=$(echo "kickpi-k7" | jq -c -R 'split(" ") | map(select(. != ""))')
           
           echo "RELEASE=${JSON_RELEASE}" >> $GITHUB_OUTPUT
           echo "BOARD=${JSON_BOARD}" >> $GITHUB_OUTPUT
