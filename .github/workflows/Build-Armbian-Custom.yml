@@ -37,7 +37,7 @@ jobs:
       NIGHTLY: 'no'
       DOCKER: 'no'
       ROOTFS: ${{ inputs.ROOTFS }}
-      BOARD: 'kickpi-k7'
+      BOARD: ${{ steps.set_matrix.outputs.BOARD }}
       RELEASE: ${{ steps.set_matrix.outputs.RELEASE }}
       VERSION: ${{ steps.get_version.outputs.VERSION }}
 
