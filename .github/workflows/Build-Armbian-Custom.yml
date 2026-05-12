@@ -144,7 +144,7 @@ jobs:
           if-no-files-found: error
           
   Build_Image:
-    name: "Build Image [${{ matrix.BOARD }} ${{ matrix.BRANCH }} ${{ matrix.RELEASE }} ${{ matrix.DESKTOP }}]"
+    name: "Build Image [${{ matrix.BOARD }} ${{ matrix.BRANCH }} ${{ matrix.RELEASE }}]"
     needs: [Prepare_Build, Build_Kernel]
     runs-on: ubuntu-22.04
     strategy:
@@ -186,19 +186,8 @@ jobs:
           sudo apt-get install -y mkbootimg android-sdk-libsparse-utils
           
           # Set build flags based on the desktop type for the compile script.
-          if [[ "${{ matrix.DESKTOP }}" == "minimal" ]]; then
-            echo "BUILD_DESKTOP="no"" >> $GITHUB_ENV
-            echo "BUILD_MINIMAL="yes"" >> $GITHUB_ENV
-          elif [[ "${{ matrix.DESKTOP }}" == "server" ]]; then
-            echo "BUILD_DESKTOP="no"" >> $GITHUB_ENV
-            echo "BUILD_MINIMAL="no"" >> $GITHUB_ENV
-          else
-            echo "BUILD_DESKTOP="yes"" >> $GITHUB_ENV
-            echo "BUILD_MINIMAL="no"" >> $GITHUB_ENV
-            echo "DESKTOP_ENVIRONMENT="${{ matrix.DESKTOP }}"" >> $GITHUB_ENV
-            echo "DESKTOP_APPGROUPS_SELECTED="browsers"" >> $GITHUB_ENV
-            echo "DESKTOP_ENVIRONMENT_CONFIG_NAME="config_base"" >> $GITHUB_ENV
-          fi
+          echo "BUILD_DESKTOP="no"" >> $GITHUB_ENV
+          echo "BUILD_MINIMAL="yes"" >> $GITHUB_ENV
           
           # Prepare build environment with userpatches and the pre-built kernel debs.
           mkdir -p ./build/userpatches ./build/output/debs
@@ -252,10 +241,10 @@ jobs:
         shell: bash
         run: |
           # Create a marker file to track which board/branch combinations succeeded.
-          echo "${{ matrix.BOARD }},${{ matrix.BRANCH }},${{ matrix.RELEASE }},${{ matrix.DESKTOP }}" > matrix-info.txt
+          echo "${{ matrix.BOARD }},${{ matrix.BRANCH }},${{ matrix.RELEASE }}" > matrix-info.txt
 
       - name: "Upload Matrix Info Artifact"
         uses: actions/upload-artifact@v4
         with:
-          name: matrix-info-${{ matrix.BOARD }}-${{ matrix.BRANCH }}-${{ matrix.RELEASE }}-${{ matrix.DESKTOP }}
+          name: matrix-info-${{ matrix.BOARD }}-${{ matrix.BRANCH }}-${{ matrix.RELEASE }}
           path: matrix-info.txt
