@@ -150,10 +150,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        BRANCH: [ edge, vendor ]
+        BRANCH: [ vendor ]
         BOARD: ${{ fromJson(needs.Prepare_Build.outputs.BOARD) }} 
         RELEASE: ${{ fromJson(needs.Prepare_Build.outputs.RELEASE) }}
-        DESKTOP: ${{ fromJson(needs.Prepare_Build.outputs.DESKTOP) }}
         
     steps:
       - name: "Checkout Build System"
