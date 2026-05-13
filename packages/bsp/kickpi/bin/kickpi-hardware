@@ -1,0 +1,106 @@
+#!/bin/bash
+
+LOG_FILE=/tmp/kickpi-hardware.log
+boardname=""
+
+4g_config() {
+    wait_time=30
+	for((i=1;i<=$wait_time;i++));
+	do 
+		if [ -c /dev/ttyUSB2 ]; then
+			echo "$i: 4g /dev/ttyUSB2 exists and is a character device." >> $LOG_FILE
+			/usr/bin/quectel-CM >>/tmp/4G.log 2>&1 &
+            break;
+		else
+			echo "$i: 4g /dev/ttyUSB2 does not exist or is not a character device." >> $LOG_FILE
+			sleep 1
+		fi
+	done
+}
+
+wifibt_config() {
+    case $boardname in
+    k7)
+        rmmod rtw88_8822cs
+        # modprobe rtw88_8822cs
+		;;
+    *)
+        echo "$boardname nothing to do" >> $LOG_FILE
+		;;
+    esac
+    # bt_config
+    killall rtk_hciattach    
+    sudo rfkill unblock all  
+    /usr/bin/wifibt-init.sh &
+}
+
+bt_config() {
+    BT_LOG=/tmp/bt.log
+
+    case $boardname in
+    k7)
+        BT_UART=/dev/ttyS4 ;;
+    *)
+        BT_UART=/dev/ttyS1 ;;
+    esac
+
+    killall rtk_hciattach    
+    sudo rfkill unblock all  
+
+    RFKILL=/sys/class/rfkill/rfkill0/state
+    echo 0 > /proc/bluetooth/sleep/btwrite
+    sleep .5
+    echo 1 | tee $RFKILL >/dev/null
+    echo 1 > /proc/bluetooth/sleep/btwrite
+    sleep .5
+
+    modprobe hci_uart
+    sleep .5
+
+    /usr/bin/rtk_hciattach -n -s 115200 $BT_UART rtk_h5 &
+
+    sleep 2
+    hciconfig hci0 up
+}
+
+fix_rootfs() {
+    MMC_DEV=/dev/mmcblk0
+
+    growpart $MMC_DEV 1
+    # e2fsck -fp "$MMC_DEV"p1
+    resize2fs "$MMC_DEV"p1
+}
+
+get_board_name() {
+    compatible=$(cat /proc/device-tree/compatible)
+    case "$compatible" in
+        kickpi*k8*)  boardname="k8" ;; 
+        kickpi*k7*)  boardname="k7" ;;
+        kickpi*k1*)  boardname="k1" ;; 
+        *) boardname=$compatible ;;
+    esac
+    echo "compatible $compatible name in dts" >> $LOG_FILE
+}
+
+prepare_board() {
+    wifibt_config &
+	4g_config &
+    fix_rootfs &
+} # prepare_board
+
+kickpi_sh() {
+    bash /etc/init.d/kickpi.sh
+}
+
+case $1 in
+	start)
+		# hardware preparation
+        get_board_name
+		prepare_board &
+        kickpi_sh &
+		;;
+	*)
+		echo "Usage: [start]" >&2
+		exit 3
+		;;
+esac

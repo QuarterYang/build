@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config SKW6621S
+    tristate "SKW wifi module skw6621s"
+    help
+      This driver supports the SKW6621S WiFi module.
+      To compile this driver as a module, choose M here: the module will be
+      called skw6621s.
+
+source "drivers/net/wireless/skw6621s/seekwaveplatform_lite/Kconfig"
+source "drivers/net/wireless/skw6621s/skwbt/Kconfig"
+source "drivers/net/wireless/skw6621s/skwifi/Kconfig"
+source "drivers/net/wireless/skw6621s/swt6621s_wifi/Kconfig"
+
+

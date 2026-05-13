@@ -94,7 +94,7 @@ driver_rtl8189FS() {
 
 	# Wireless drivers for Realtek 8189FS chipsets
 
-	if linux-version compare "${version}" ge 3.14; then
+	if linux-version compare "${version}" ge 3.14 && [[ "$BRANCH" != bleedingedge ]]; then
 
 		# Attach to specific commit (was "branch:rtl8189fs")
 		local rtl8189fsver='commit:876e627a5b6a8021700391b4249a4a31edfebe5c' # Commit date: 2025-09-26 (please update when updating commit ref)
@@ -133,11 +133,6 @@ driver_rtl8189FS() {
 
 		# fix compilation for kernels >= 5.4.251
 		process_patch_file "${SRC}/patch/misc/wireless-rtl8189fs-Fix-building-on-5.4.251-kernel.patch" "applying"
-
-		# fix compilation for kernels >= 7.1
-		if linux-version compare "${version}" ge 7.1; then
-			process_patch_file "${SRC}/patch/misc/wireless-rtl8189fs-Fix-building-on-7.1-kernel.patch" "applying"
-		fi
 	fi
 }
 
@@ -927,4 +922,20 @@ driver_rtl8152_rtl8153() {
 		cp -R "${SRC}/cache/sources/rtl8152/${rtl8152ver#*:}"/{r8152.c,compatibility.h} \
 			"$kerneldir/drivers/net/usb/"
 	fi
+}
+
+driver_skw6621s() {
+
+	rm -rf "$kerneldir/drivers/net/wireless/skw6621s"
+	mkdir -p "$kerneldir/drivers/net/wireless/skw6621s"
+	cp -R "${SRC}/packages/bsp/wifi-skw6621s/skw6621s" \
+		"$kerneldir/drivers/net/wireless/"
+		
+	cp -R ${SRC}/packages/bsp/wifi-skw6621s/include/linux/platform_data/* \
+		"$kerneldir/include/linux/platform_data/"
+
+	# Add to section Makefile
+	echo "obj-y += skw6621s/" >> "$kerneldir/drivers/net/wireless/Makefile"
+	sed -i '/source "drivers\/net\/wireless\/ti\/Kconfig"/a source "drivers\/net\/wireless\/skw6621s\/Kconfig"' \
+		"$kerneldir/drivers/net/wireless/Kconfig"
 }

@@ -1,0 +1,16 @@
+# kickpi hardware service
+
+[Unit]
+Description=kickpi hardware config
+After=network.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/kickpi-hardware start
+ExecStop=/usr/bin/kickpi-hardware stop
+RemainAfterExit=yes
+TimeoutStartSec=2min
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2 @@
+0x00000000	skw_start_wifi_service	/home/work/rockchip/rk3576-linux/external/rkwifibt/drivers/ea6x21qx/drivers/seekwaveplatform_lite/skw_sdio_lite	EXPORT_SYMBOL_GPL	
+0x00000000	skw_stop_wifi_service	/home/work/rockchip/rk3576-linux/external/rkwifibt/drivers/ea6x21qx/drivers/seekwaveplatform_lite/skw_sdio_lite	EXPORT_SYMBOL_GPL	
