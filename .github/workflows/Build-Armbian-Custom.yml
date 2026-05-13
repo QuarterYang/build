@@ -51,7 +51,7 @@ jobs:
       - name: "Checkout Build System to get Version"
         uses: actions/checkout@v4
         with:
-          repository: armbian/build
+          ref: main
           path: build
 
       - name: "Get Armbian Version"
@@ -134,7 +134,7 @@ jobs:
             BETA="${{ needs.Prepare_Build.outputs.NIGHTLY }}" \
             PREFER_DOCKER="${{ needs.Prepare_Build.outputs.DOCKER }}" \
             EXPERT="yes" \
-            VENDOR=Armbian
+            VENDOR=QuarterYang
 
       - name: "Upload Kernel Artifact"
         uses: actions/upload-artifact@v4
@@ -193,12 +193,6 @@ jobs:
           mkdir -p ./build/userpatches ./build/output/debs
           cp -rf ./os/userpatches/* ./build/userpatches
           cp -v ./prebuilt-kernel-debs/*.deb ./build/output/debs/
-          
-      - name: "Import GPG Key for Signing Images"
-        uses: crazy-max/ghaction-import-gpg@v6
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: "Compile Image [${{ matrix.BOARD }} ${{ matrix.RELEASE }}]"
         shell: bash
@@ -221,8 +215,7 @@ jobs:
             ROOTFS_TYPE="${{ needs.Prepare_Build.outputs.ROOTFS }}" \
             NETWORKING_STACK="network-manager" \
             EXPERT="yes" \
-            VENDOR=Armbian \
-            COMPRESS_OUTPUTIMAGE="sha,gpg,xz"
+            VENDOR=QuarterYang
 
       - name: "Package Flasher for UFI/UZ Devices"
         if: contains(fromJson('["ufi001c", "uz801"]'), matrix.BOARD)
@@ -244,7 +237,7 @@ jobs:
           echo "${{ matrix.BOARD }},${{ matrix.BRANCH }},${{ matrix.RELEASE }}" > matrix-info.txt
 
       - name: "Upload Matrix Info Artifact"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: matrix-info-${{ matrix.BOARD }}-${{ matrix.BRANCH }}-${{ matrix.RELEASE }}
-          path: matrix-info.txt
+          name: Armbian-${{ matrix.BOARD }}-${{ matrix.BRANCH }}-${{ matrix.RELEASE }}
+          path: ./build/output/images/*
